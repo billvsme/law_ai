@@ -34,7 +34,7 @@ async def run_shell():
     law_vs = get_vectorstore(config.LAW_VS_COLLECTION_NAME)
     web_vs = get_vectorstore(config.WEB_VS_COLLECTION_NAME)
 
-    web_research_retriever = LawWebRetiever(
+    web_retriever = LawWebRetiever(
         vectorstore=web_vs,
         search=DuckDuckGoSearchAPIWrapper(),
         num_search_results=config.WEB_VS_SEARCH_K
@@ -43,7 +43,7 @@ async def run_shell():
     chain = LawQAChain.from_llm(
         llm,
         vs_retriever=law_vs.as_retriever(search_kwargs={"k": config.LAW_VS_SEARCH_K}),
-        web_retriever=web_research_retriever,
+        web_retriever=web_retriever,
         return_source_documents=True,
     )
 
