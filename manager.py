@@ -4,19 +4,17 @@ import sys
 from pprint import pprint
 
 from langchain.callbacks import AsyncIteratorCallbackHandler
+from langchain.utilities import DuckDuckGoSearchAPIWrapper
 
 from law_ai.loader import LawLoader
 from law_ai.splitter import LawSplitter
 from law_ai.utils import get_vectorstore, get_llm, law_index, \
         clear_vectorstore, record_manager, source_text
 from law_ai.chain import LawQAChain
-from langchain.utilities import DuckDuckGoSearchAPIWrapper
 from law_ai.retriever import LawWebRetiever
 
 from config import config
 
-
-# langchain.debug = True
 
 def init_vectorstore():
     record_manager.create_schema()
