@@ -1,0 +1,139 @@
+# coding: utf-8
+from typing import Any, Optional, List
+from collections import defaultdict
+
+from langchain.chains.retrieval_qa.base import BaseRetrievalQA
+from langchain.chains.combine_documents.stuff import StuffDocumentsChain
+from langchain.schema.language_model import BaseLanguageModel
+from langchain.prompts import PromptTemplate
+from langchain.callbacks.manager import Callbacks
+from langchain.chains.question_answering.stuff_prompt import PROMPT_SELECTOR
+from langchain.chains.llm import LLMChain
+from langchain.docstore.document import Document
+from langchain.schema import format_document
+from langchain.schema import BaseRetriever
+from langchain.pydantic_v1 import Field
+from langchain.callbacks.manager import (
+    AsyncCallbackManagerForChainRun,
+    CallbackManagerForChainRun,
+)
+
+
+class LawStuffDocumentsChain(StuffDocumentsChain):
+    def _get_inputs(self, docs: List[Document], **kwargs: Any) -> dict:
+        """Construct inputs from kwargs and docs.
+
+        Format and the join all the documents together into one input with name
+        `self.document_variable_name`. The pluck any additional variables
+        from **kwargs.
+
+        Args:
+            docs: List of documents to format and then join into single input
+            **kwargs: additional inputs to chain, will pluck any other required
+                arguments from here.
+
+        Returns:
+            dictionary of inputs to LLMChain
+        """
+        # Join the documents together to put them in the prompt.
+        law_book = defaultdict(list)
+        law_web = defaultdict(list)
+        for doc in docs:
+            metadata = doc.metadata
+            if 'book' in metadata:
+                law_book[metadata["book"]].append(
+                    format_document(doc, self.document_prompt).strip("\n"))
+            elif 'link' in metadata:
+                law_web[metadata["title"]].append(
+                    format_document(doc, self.document_prompt).strip("\n"))
+
+        law_str = ""
+        for book, page_contents in law_book.items():
+            law_str += f"《{book}》\n"
+            law_str += "\n".join(page_contents)
+            law_str += "\n\n"
+
+        for web, page_contents in law_web.items():
+            law_str += f"网页：{web}\n"
+            law_str += "\n".join(page_contents)
+            law_str += "\n\n"
+
+        inputs = {
+            k: v
+            for k, v in kwargs.items()
+            if k in self.llm_chain.prompt.input_variables
+        }
+        inputs[self.document_variable_name] = law_str
+        return inputs
+
+
+class LawQAChain(BaseRetrievalQA):
+    vs_retriever: BaseRetriever = Field(exclude=True)
+    web_retriever: BaseRetriever = Field(exclude=True)
+
+    def _get_docs(
+        self,
+        question: str,
+        *,
+        run_manager: CallbackManagerForChainRun,
+    ) -> List[Document]:
+        """Get docs."""
+        vs_docs = self.vs_retriever.get_relevant_documents(
+            question, callbacks=run_manager.get_child()
+        )
+
+        web_docs = self.web_retriever.get_relevant_documents(
+            question, callbacks=run_manager.get_child()
+        )
+
+        return vs_docs + web_docs
+
+    async def _aget_docs(
+        self,
+        question: str,
+        *,
+        run_manager: AsyncCallbackManagerForChainRun,
+    ) -> List[Document]:
+        """Get docs."""
+        vs_docs = await self.vs_retriever.aget_relevant_documents(
+            question, callbacks=run_manager.get_child()
+        )
+
+        web_docs = await self.web_retriever.aget_relevant_documents(
+            question, callbacks=run_manager.get_child()
+        )
+
+        return vs_docs + web_docs
+
+    @property
+    def _chain_type(self) -> str:
+        """Return the chain type."""
+        return "law_qa"
+
+    @classmethod
+    def from_llm(
+        cls,
+        llm: BaseLanguageModel,
+        prompt: Optional[PromptTemplate] = None,
+        callbacks: Callbacks = None,
+        **kwargs: Any,
+    ) -> BaseRetrievalQA:
+        """Initialize from LLM."""
+        _prompt = prompt or PROMPT_SELECTOR.get_prompt(llm)
+        llm_chain = LLMChain(llm=llm, prompt=_prompt, callbacks=callbacks)
+        document_prompt = PromptTemplate(
+            input_variables=["page_content"], template="{page_content}"
+        )
+
+        combine_documents_chain = LawStuffDocumentsChain(
+            llm_chain=llm_chain,
+            document_variable_name="context",
+            document_prompt=document_prompt,
+            callbacks=callbacks,
+        )
+
+        return cls(
+            combine_documents_chain=combine_documents_chain,
+            callbacks=callbacks,
+            **kwargs,
+        )
