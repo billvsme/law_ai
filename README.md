@@ -1,3 +1,11 @@
+<div align="center">
+  
+![Python version](https://img.shields.io/badge/python-3.9+-blue)
+[![web ui](https://img.shields.io/badge/WebUI-Gradio-important)](https://www.gradio.app/)
+[![Twitter follow](https://img.shields.io/twitter/follow/gradio?style=social&label=follow)](https://twitter.com/billvsme)
+
+</div>
+
 法律AI助手
 =========
 
