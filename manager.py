@@ -29,7 +29,7 @@ def init_vectorstore():
     pprint(dict(info))
 
 
-async def run_shell():
+def get_law_chain():
     llm = get_llm()
     law_vs = get_vectorstore(config.LAW_VS_COLLECTION_NAME)
     web_vs = get_vectorstore(config.WEB_VS_COLLECTION_NAME)
@@ -47,6 +47,12 @@ async def run_shell():
         return_source_documents=True,
     )
 
+    return chain
+
+
+async def run_shell():
+    chain = get_law_chain()
+
     while True:
         query = input("\n用户:")
         if query.strip() == "stop":
@@ -55,14 +61,42 @@ async def run_shell():
         callback = AsyncIteratorCallbackHandler()
         task = asyncio.create_task(
             chain.ainvoke({"query": query}, config={"callbacks": [callback]}))
-        async for t in callback.aiter():
-            print(t, end="", flush=True)
+        async for new_token in callback.aiter():
+            print(new_token, end="", flush=True)
 
         print("\n")
         res = await task
         _, docs = res['result'], res['source_documents']
 
         print(f"{source_text(docs)}")
+
+
+async def run_web():
+    import gradio as gr
+
+    chain = get_law_chain()
+
+    async def chat(message, history):
+        callback = AsyncIteratorCallbackHandler()
+        task = asyncio.create_task(
+            chain.ainvoke({"query": message}, config={"callbacks": [callback]}))
+
+        response = ""
+        async for new_token in callback.aiter():
+            response += new_token
+            yield response
+
+        res = await task
+        _, docs = res['result'], res['source_documents']
+
+        response += "\n" + source_text(docs)
+        yield response
+
+    demo = gr.ChatInterface(
+        fn=chat, examples=["故意杀了一个人，会判几年？", "杀人自首会减刑吗？"], title="法律AI小助手")
+
+    demo.queue()
+    demo.launch(server_name=config.WEB_HOST, server_port=config.WEB_PORT)
 
 
 if __name__ == '__main__':
@@ -85,6 +119,15 @@ if __name__ == '__main__':
             run shell
         ''')
     )
+    parser.add_argument(
+        "-w",
+        "--web",
+        action="store_true",
+        help=('''
+            run web
+        ''')
+    )
+
 
     if len(sys.argv) <= 1:
         parser.print_help()
@@ -95,3 +138,5 @@ if __name__ == '__main__':
         init_vectorstore()
     if args.shell:
         asyncio.run(run_shell())
+    if args.web:
+        asyncio.run(run_web())

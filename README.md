@@ -1,7 +1,7 @@
 法律AI助手
 =========
 
-法律AI助手，法律RAG，通过倒入全部200+本法律手册、网页搜索内容结合LLM回答你的问题，并且给出对应的法规和网站，基于langchain，openai，chroma，duckduckgo-search
+法律AI助手，法律RAG，通过倒入全部200+本法律手册、网页搜索内容结合LLM回答你的问题，并且给出对应的法规和网站，基于langchain，openai，chroma，duckduckgo-search, Gradio
 
 ## 原理
 
@@ -40,6 +40,14 @@ pip install -r requirements.txt
 python manager.py --init
 ```
 
+## 运行web ui
+
+```
+python manager.py --web
+```
+
+<a href="https://sm.ms/image/DbP3TiHZConUFe7" target="_blank"><img src="https://s2.loli.net/2023/10/20/DbP3TiHZConUFe7.png" ></a>
+
 ## 运行对话
 
 ```
@@ -51,5 +59,7 @@ python manager.py --shell
 ## 配置修改
 
 如果你想修改回答中的法律条数和网页条数，可以修改config.py
-- 法律条数：LAW_VS_SEARCH_K
-- 网页条数：WEB_VS_SEARCH_K
+- 法律条数: LAW_VS_SEARCH_K
+- 网页条数: WEB_VS_SEARCH_K
+- web ui地址: WEB_HOST
+- web ui端口: WEB_PORT
