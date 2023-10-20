@@ -23,15 +23,36 @@
 问答相关问题时，先通过相似度搜索向量数据，获取相关法律条文，然后通过DuckDuckGo互联网搜索相关网页，然后合并法律条文和网页内容，对问题进行回答。
 
 **初始化init**
-```
-LawLoader -> LawSplitter -> 向量数据库(Chroma)
+```mermaid
+flowchart LR
+    A[法律文件加载LawLoader] --> B[MarkdownHeaderTextSplitter]
+    subgraph 文件切分LawSplitter
+    B[MarkdownHeaderTextSplitter] --> C[RecursiveCharacterTextSplitter]
+    end
+    C --> E[Embedding]
+    E --> F[向量数据库Chroma]
 ```
 
-**提问**
+**提问流程**
+```mermaid
+flowchart LR
+    A[提问] --> B[问题校验];
+    B -- 否 --> C1[请提问法律相关问题]
+    B -- 是 --> C[法律Chain];
+    subgraph Law Chain
+    C --> D[向量数据库Chroma];
+    C --> E[DuckDuckGo互联网搜索];
+    D --> F[法律docs]
+    E --> G[网页docs]
+    G1[Prompt] --> H[合并combine]
+    F --> H
+    G --> H
+    H --> I[LLM]
+    end
+    I --> J[callback流输出]
 ```
-LawQAChain -> 向量数据库(Chroma) -> DuckDuckGo互联网搜索 -> stuff合并(LawStuffDocumentsChain) -> LLM -> callback异步输出
-```
-  
+
+
 ## 初始化运行环境
 
 ```
