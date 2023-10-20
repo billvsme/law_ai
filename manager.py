@@ -1,22 +1,25 @@
 # coding: utf-8
-import asyncio
+from dotenv import load_dotenv
+
 import sys
+import asyncio
 from pprint import pprint
 
 from langchain.callbacks import AsyncIteratorCallbackHandler
-from langchain.utilities import DuckDuckGoSearchAPIWrapper
 
 from law_ai.loader import LawLoader
 from law_ai.splitter import LawSplitter
-from law_ai.utils import get_vectorstore, get_llm, law_index, \
-        clear_vectorstore, record_manager, source_text
-from law_ai.chain import LawQAChain
-from law_ai.retriever import LawWebRetiever
+from law_ai.utils import law_index, clear_vectorstore, get_record_manager
+from law_ai.chain import get_law_chain
 
 from config import config
 
 
+load_dotenv()
+
+
 def init_vectorstore():
+    record_manager = get_record_manager()
     record_manager.create_schema()
 
     clear_vectorstore()
@@ -29,29 +32,8 @@ def init_vectorstore():
     pprint(dict(info))
 
 
-def get_law_chain():
-    llm = get_llm()
-    law_vs = get_vectorstore(config.LAW_VS_COLLECTION_NAME)
-    web_vs = get_vectorstore(config.WEB_VS_COLLECTION_NAME)
-
-    web_retriever = LawWebRetiever(
-        vectorstore=web_vs,
-        search=DuckDuckGoSearchAPIWrapper(),
-        num_search_results=config.WEB_VS_SEARCH_K
-    )
-
-    chain = LawQAChain.from_llm(
-        llm,
-        vs_retriever=law_vs.as_retriever(search_kwargs={"k": config.LAW_VS_SEARCH_K}),
-        web_retriever=web_retriever,
-        return_source_documents=True,
-    )
-
-    return chain
-
-
 async def run_shell():
-    chain = get_law_chain()
+    chain = get_law_chain(config)
 
     while True:
         query = input("\n用户:")
@@ -60,26 +42,24 @@ async def run_shell():
         print("\n法律小助手:", end="")
         callback = AsyncIteratorCallbackHandler()
         task = asyncio.create_task(
-            chain.ainvoke({"query": query}, config={"callbacks": [callback]}))
+            chain.ainvoke({"question": query}, config={"callbacks": [callback]}))
         async for new_token in callback.aiter():
             print(new_token, end="", flush=True)
 
-        print("\n")
+        print("\n\n")
         res = await task
-        _, docs = res['result'], res['source_documents']
-
-        print(f"{source_text(docs)}")
+        print(res["law_context"] + "\n" + res["web_context"])
 
 
 async def run_web():
     import gradio as gr
 
-    chain = get_law_chain()
+    chain = get_law_chain(config)
 
     async def chat(message, history):
         callback = AsyncIteratorCallbackHandler()
         task = asyncio.create_task(
-            chain.ainvoke({"query": message}, config={"callbacks": [callback]}))
+            chain.ainvoke({"question": message}, config={"callbacks": [callback]}))
 
         response = ""
         async for new_token in callback.aiter():
@@ -87,10 +67,9 @@ async def run_web():
             yield response
 
         res = await task
-        _, docs = res['result'], res['source_documents']
-
-        response += "\n" + source_text(docs)
-        yield response
+        for new_token in ["\n\n", res["law_context"], "\n", res["web_context"]]:
+            response += new_token
+            yield response
 
     demo = gr.ChatInterface(
         fn=chat, examples=["故意杀了一个人，会判几年？", "杀人自首会减刑吗？"], title="法律AI小助手")
@@ -130,7 +109,6 @@ if __name__ == '__main__':
             run web
         ''')
     )
-
 
     if len(sys.argv) <= 1:
         parser.print_help()

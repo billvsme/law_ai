@@ -1,6 +1,7 @@
 # coding: utf-8
 from typing import Any, Optional, List
 from collections import defaultdict
+from operator import itemgetter
 
 from langchain.chains.retrieval_qa.base import BaseRetrievalQA
 from langchain.chains.combine_documents.stuff import StuffDocumentsChain
@@ -13,10 +14,18 @@ from langchain.docstore.document import Document
 from langchain.schema import format_document
 from langchain.schema import BaseRetriever
 from langchain.pydantic_v1 import Field
+from langchain.schema.output_parser import StrOutputParser
+from langchain.schema.runnable import RunnableMap
+from langchain.utilities import DuckDuckGoSearchAPIWrapper
 from langchain.callbacks.manager import (
     AsyncCallbackManagerForChainRun,
     CallbackManagerForChainRun,
 )
+
+from .utils import get_vectorstore, get_model
+from .retriever import LawWebRetiever
+from .prompt import LAW_PROMPT
+from .combine import combine_law_docs, combine_web_docs
 
 
 class LawStuffDocumentsChain(StuffDocumentsChain):
@@ -137,3 +146,50 @@ class LawQAChain(BaseRetrievalQA):
             callbacks=callbacks,
             **kwargs,
         )
+
+
+def get_law_chain(config):
+    law_vs = get_vectorstore(config.LAW_VS_COLLECTION_NAME)
+    web_vs = get_vectorstore(config.WEB_VS_COLLECTION_NAME)
+
+    model = get_model()
+    vs_retriever = law_vs.as_retriever(search_kwargs={"k": config.LAW_VS_SEARCH_K})
+    web_retriever = LawWebRetiever(
+        vectorstore=web_vs,
+        search=DuckDuckGoSearchAPIWrapper(),
+        num_search_results=config.WEB_VS_SEARCH_K
+    )
+
+    chain = (
+        RunnableMap(
+            {
+                "law_docs": itemgetter("question") | vs_retriever,
+                'web_docs': itemgetter("question") | web_retriever,
+                "question": lambda x: x["question"]}
+        )
+        | RunnableMap(
+            {
+                "law_docs": lambda x: x["law_docs"],
+                "web_docs": lambda x: x["web_docs"],
+                "law_context": lambda x: combine_law_docs(x["law_docs"]),
+                "web_context": lambda x: combine_web_docs(x["web_docs"]),
+                "question": lambda x: x["question"]}
+        )
+        | RunnableMap({
+                "law_docs": lambda x: x["law_docs"],
+                "web_docs": lambda x: x["web_docs"],
+                "law_context": lambda x: x["law_context"],
+                "web_context": lambda x: x["web_context"],
+                "prompt": LAW_PROMPT
+            }
+        )
+        | RunnableMap({
+            "law_docs": lambda x: x["law_docs"],
+            "web_docs": lambda x: x["web_docs"],
+            "law_context": lambda x: x["law_context"],
+            "web_context": lambda x: x["web_context"],
+            "answer": itemgetter("prompt") | model | StrOutputParser()
+        })
+    )
+
+    return chain

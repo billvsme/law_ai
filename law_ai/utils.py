@@ -5,11 +5,8 @@ from langchain.storage import LocalFileStore
 from langchain.embeddings import OpenAIEmbeddings, CacheBackedEmbeddings
 from langchain.indexes import SQLRecordManager, index
 from langchain.vectorstores import Chroma
-from langchain.llms import OpenAI
 from langchain.indexes._api import _batch
-from dotenv import load_dotenv
-
-load_dotenv()
+from langchain.chat_models import ChatOpenAI
 
 
 def get_cached_embedder():
@@ -22,14 +19,10 @@ def get_cached_embedder():
     return cached_embedder
 
 
-record_manager = SQLRecordManager(
-    "chroma/law", db_url="sqlite:///law_record_manager_cache.sql"
-)
-
-vectorstore = Chroma(
-    persist_directory="./chroma_db",
-    embedding_function=get_cached_embedder(),
-    collection_name="law")
+def get_record_manager():
+    return SQLRecordManager(
+        "chroma/law", db_url="sqlite:///law_record_manager_cache.sql"
+    )
 
 
 def get_vectorstore(collection_name="law"):
@@ -42,12 +35,12 @@ def get_vectorstore(collection_name="law"):
 
 
 def clear_vectorstore():
-    index([], record_manager, vectorstore, cleanup="full", source_id_key="source")
+    index([], get_record_manager(), get_vectorstore("law"), cleanup="full", source_id_key="source")
 
 
-def get_llm():
-    llm = OpenAI(temperature=0, streaming=True)
-    return llm
+def get_model():
+    model = ChatOpenAI(streaming=True)
+    return model
 
 
 def law_index(docs, show_progress=True):
@@ -61,8 +54,8 @@ def law_index(docs, show_progress=True):
     for docs in _batch(100, docs):
         result = index(
             docs,
-            record_manager,
-            vectorstore,
+            get_record_manager(),
+            get_vectorstore("law"),
             cleanup=None,
             # cleanup="full",
             source_id_key="source",
@@ -77,19 +70,3 @@ def law_index(docs, show_progress=True):
         pbar.close()
 
     return info
-
-
-def source_text(docs):
-    text = ""
-    for doc in docs:
-        if "book" in doc.metadata:
-            text += f"相关法律：《{doc.metadata['book']}》\n"
-            text += doc.page_content.strip("\n") + "\n"
-        elif 'link' in doc.metadata:
-            text += f"相关网页：{doc.metadata['title']}\n"
-            text += f"地址：{doc.metadata['link']}\n"
-            text += doc.page_content.strip("\n") + "\n"
-
-        text += "\n"
-
-    return text
