@@ -96,7 +96,10 @@ async def run_web():
         fn=chat, examples=["故意杀了一个人，会判几年？", "杀人自首会减刑吗？"], title="法律AI小助手")
 
     demo.queue()
-    demo.launch(server_name=config.WEB_HOST, server_port=config.WEB_PORT)
+    demo.launch(
+        server_name=config.WEB_HOST, server_port=config.WEB_PORT,
+        auth=(config.WEB_USERNAME, config.WEB_PASSWORD),
+        auth_message="默认用户名密码: username / password")
 
 
 if __name__ == '__main__':

@@ -13,6 +13,8 @@ class Config:
 
     WEB_HOST = "0.0.0.0"
     WEB_PORT = 7860
+    WEB_USERNAME = "username"
+    WEB_PASSWORD = "password"
 
 
 config = Config()

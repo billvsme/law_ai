@@ -54,6 +54,8 @@ python manager.py --init
 python manager.py --web
 ```
 
+默认用户名/密码: username / password
+
 <a href="https://sm.ms/image/DbP3TiHZConUFe7" target="_blank"><img src="https://s2.loli.net/2023/10/20/DbP3TiHZConUFe7.png" ></a>
 
 ## 运行对话
@@ -71,3 +73,5 @@ python manager.py --shell
 - 网页条数: WEB_VS_SEARCH_K
 - web ui地址: WEB_HOST
 - web ui端口: WEB_PORT
+- web ui登录用户: WEB_USERNAME
+- web ui登录密码: WEB_PASSWORD
