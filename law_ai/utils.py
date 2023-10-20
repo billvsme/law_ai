@@ -1,6 +1,8 @@
 # coding: utf-8
+from typing import List, Dict
 from collections import defaultdict
 
+from langchain.docstore.document import Document
 from langchain.storage import LocalFileStore
 from langchain.embeddings import OpenAIEmbeddings, CacheBackedEmbeddings
 from langchain.indexes import SQLRecordManager, index
@@ -9,7 +11,7 @@ from langchain.indexes._api import _batch
 from langchain.chat_models import ChatOpenAI
 
 
-def get_cached_embedder():
+def get_cached_embedder() -> CacheBackedEmbeddings:
     fs = LocalFileStore("./.cache/embeddings")
     underlying_embeddings = OpenAIEmbeddings()
 
@@ -19,13 +21,13 @@ def get_cached_embedder():
     return cached_embedder
 
 
-def get_record_manager():
+def get_record_manager() -> SQLRecordManager:
     return SQLRecordManager(
         "chroma/law", db_url="sqlite:///law_record_manager_cache.sql"
     )
 
 
-def get_vectorstore(collection_name="law"):
+def get_vectorstore(collection_name: str = "law") -> Chroma:
     vectorstore = Chroma(
         persist_directory="./chroma_db",
         embedding_function=get_cached_embedder(),
@@ -34,17 +36,20 @@ def get_vectorstore(collection_name="law"):
     return vectorstore
 
 
-def clear_vectorstore():
+def clear_vectorstore() -> None:
     index([], get_record_manager(), get_vectorstore("law"), cleanup="full", source_id_key="source")
 
 
-def get_model():
+def get_model() -> ChatOpenAI:
     model = ChatOpenAI(streaming=True)
     return model
 
 
-def law_index(docs, show_progress=True):
+def law_index(docs: List[Document], show_progress: bool = True) -> Dict:
     info = defaultdict(int)
+
+    record_manager = get_record_manager()
+    vectorstore = get_vectorstore("law")
 
     pbar = None
     if show_progress:
@@ -54,8 +59,8 @@ def law_index(docs, show_progress=True):
     for docs in _batch(100, docs):
         result = index(
             docs,
-            get_record_manager(),
-            get_vectorstore("law"),
+            record_manager,
+            vectorstore,
             cleanup=None,
             # cleanup="full",
             source_id_key="source",
@@ -69,4 +74,4 @@ def law_index(docs, show_progress=True):
     if pbar:
         pbar.close()
 
-    return info
+    return dict(info)

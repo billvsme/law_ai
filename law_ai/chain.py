@@ -15,7 +15,9 @@ from langchain.schema import format_document
 from langchain.schema import BaseRetriever
 from langchain.pydantic_v1 import Field
 from langchain.schema.output_parser import StrOutputParser
+from langchain.output_parsers import BooleanOutputParser
 from langchain.schema.runnable import RunnableMap
+from langchain.chains.base import Chain
 from langchain.utilities import DuckDuckGoSearchAPIWrapper
 from langchain.callbacks.manager import (
     AsyncCallbackManagerForChainRun,
@@ -24,7 +26,7 @@ from langchain.callbacks.manager import (
 
 from .utils import get_vectorstore, get_model
 from .retriever import LawWebRetiever
-from .prompt import LAW_PROMPT
+from .prompt import LAW_PROMPT, CHECK_LAW_PROMPT
 from .combine import combine_law_docs, combine_web_docs
 
 
@@ -148,7 +150,15 @@ class LawQAChain(BaseRetrievalQA):
         )
 
 
-def get_law_chain(config):
+def get_check_law_chain(config: Any) -> Chain:
+    model = get_model()
+
+    check_chain = CHECK_LAW_PROMPT | model | BooleanOutputParser()
+
+    return check_chain
+
+
+def get_law_chain(config: Any) -> Chain:
     law_vs = get_vectorstore(config.LAW_VS_COLLECTION_NAME)
     web_vs = get_vectorstore(config.WEB_VS_COLLECTION_NAME)
 

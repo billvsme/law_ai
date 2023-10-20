@@ -1,24 +1,23 @@
 # coding: utf-8
-from dotenv import load_dotenv
 
 import sys
 import asyncio
 from pprint import pprint
 
+from dotenv import load_dotenv
 from langchain.callbacks import AsyncIteratorCallbackHandler
 
 from law_ai.loader import LawLoader
 from law_ai.splitter import LawSplitter
 from law_ai.utils import law_index, clear_vectorstore, get_record_manager
-from law_ai.chain import get_law_chain
+from law_ai.chain import get_law_chain, get_check_law_chain
 
 from config import config
-
 
 load_dotenv()
 
 
-def init_vectorstore():
+def init_vectorstore() -> None:
     record_manager = get_record_manager()
     record_manager.create_schema()
 
@@ -29,20 +28,26 @@ def init_vectorstore():
     )
     docs = LawLoader(config.LAW_BOOK_PATH).load_and_split(text_splitter=text_splitter)
     info = law_index(docs)
-    pprint(dict(info))
+    pprint(info)
 
 
-async def run_shell():
+async def run_shell() -> None:
+    check_law_chain = get_check_law_chain(config)
     chain = get_law_chain(config)
 
     while True:
-        query = input("\n用户:")
-        if query.strip() == "stop":
+        question = input("\n用户:")
+        if question.strip() == "stop":
             break
         print("\n法律小助手:", end="")
+        is_law = check_law_chain.invoke({"question": question})
+        if not is_law:
+            print("不好意思，我是法律AI助手，请提问和法律有关的问题。")
+            continue
+
         callback = AsyncIteratorCallbackHandler()
         task = asyncio.create_task(
-            chain.ainvoke({"question": query}, config={"callbacks": [callback]}))
+            chain.ainvoke({"question": question}, config={"callbacks": [callback]}))
         async for new_token in callback.aiter():
             print(new_token, end="", flush=True)
 
@@ -51,12 +56,18 @@ async def run_shell():
         print(res["law_context"] + "\n" + res["web_context"])
 
 
-async def run_web():
+async def run_web() -> None:
     import gradio as gr
 
+    check_law_chain = get_check_law_chain(config)
     chain = get_law_chain(config)
 
     async def chat(message, history):
+        is_law = check_law_chain.invoke({"question": message})
+        if not is_law:
+            yield "不好意思，我是法律AI助手，请提问和法律有关的问题。"
+            return
+
         callback = AsyncIteratorCallbackHandler()
         task = asyncio.create_task(
             chain.ainvoke({"question": message}, config={"callbacks": [callback]}))
