@@ -11,6 +11,12 @@
 
 法律AI助手，法律RAG，通过倒入全部200+本法律手册、网页搜索内容结合LLM回答你的问题，并且给出对应的法规和网站，基于langchain，openai，chroma，duckduckgo-search, Gradio
 
+## Demo
+[https://law.vmaig.com/](https://law.vmaig.com/)
+
+**用户名**: username  
+**密码**:  password  
+
 ## 原理
 
 基于langchain链式调用，先按条切分法律条文，导入向量数据Chroma。
