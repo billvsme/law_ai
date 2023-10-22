@@ -21,9 +21,9 @@ def get_cached_embedder() -> CacheBackedEmbeddings:
     return cached_embedder
 
 
-def get_record_manager() -> SQLRecordManager:
+def get_record_manager(namespace: str = "law") -> SQLRecordManager:
     return SQLRecordManager(
-        "chroma/law", db_url="sqlite:///law_record_manager_cache.sql"
+        f"chroma/{namespace}", db_url="sqlite:///law_record_manager_cache.sql"
     )
 
 
@@ -36,9 +36,9 @@ def get_vectorstore(collection_name: str = "law") -> Chroma:
     return vectorstore
 
 
-def clear_vectorstore() -> None:
-    record_manager = get_record_manager()
-    vectorstore = get_vectorstore("law")
+def clear_vectorstore(collection_name: str = "law") -> None:
+    record_manager = get_record_manager(collection_name)
+    vectorstore = get_vectorstore(collection_name)
 
     index([], record_manager, vectorstore, cleanup="full", source_id_key="source")
 
@@ -51,7 +51,7 @@ def get_model(model="gpt-3.5-turbo-0613", streaming=True) -> ChatOpenAI:
 def law_index(docs: List[Document], show_progress: bool = True) -> Dict:
     info = defaultdict(int)
 
-    record_manager = get_record_manager()
+    record_manager = get_record_manager("law")
     vectorstore = get_vectorstore("law")
 
     pbar = None

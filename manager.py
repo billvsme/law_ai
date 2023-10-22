@@ -17,11 +17,16 @@ from config import config
 load_dotenv()
 
 
+# from langchain.cache import SQLiteCache
+# from langchain.globals import set_llm_cache
+# set_llm_cache(SQLiteCache(database_path=".langchain.db"))
+
+
 def init_vectorstore() -> None:
-    record_manager = get_record_manager()
+    record_manager = get_record_manager("law")
     record_manager.create_schema()
 
-    clear_vectorstore()
+    clear_vectorstore("law")
 
     text_splitter = LawSplitter.from_tiktoken_encoder(
         chunk_size=config.LAW_BOOK_CHUNK_SIZE, chunk_overlap=config.LAW_BOOK_CHUNK_OVERLAP
