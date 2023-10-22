@@ -166,3 +166,4 @@ cython_debug/
 cache
 chroma_db
 *.sql
+.langchain.db

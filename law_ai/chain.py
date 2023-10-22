@@ -19,6 +19,7 @@ from langchain.output_parsers import BooleanOutputParser
 from langchain.schema.runnable import RunnableMap
 from langchain.chains.base import Chain
 from langchain.utilities import DuckDuckGoSearchAPIWrapper
+from langchain.output_parsers.openai_functions import JsonKeyOutputFunctionsParser
 from langchain.callbacks.manager import (
     AsyncCallbackManagerForChainRun,
     CallbackManagerForChainRun,
@@ -26,7 +27,7 @@ from langchain.callbacks.manager import (
 
 from .utils import get_vectorstore, get_model
 from .retriever import LawWebRetiever
-from .prompt import LAW_PROMPT, CHECK_LAW_PROMPT
+from .prompt import LAW_PROMPT, CHECK_LAW_PROMPT, HYPO_QUESTION_PROMPT
 from .combine import combine_law_docs, combine_web_docs
 
 
@@ -200,6 +201,38 @@ def get_law_chain(config: Any) -> Chain:
             "web_context": lambda x: x["web_context"],
             "answer": itemgetter("prompt") | model | StrOutputParser()
         })
+    )
+
+    return chain
+
+
+def get_hypo_questions_chain(config: Any) -> Chain:
+    model = get_model()
+
+    functions = [
+        {
+            "name": "hypothetical_questions",
+            "description": "Generate hypothetical questions",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "questions": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                    },
+                },
+                "required": ["questions"]
+            }
+        }
+    ]
+
+    chain = (
+        {"context": lambda x: f"《{x.metadata['book']}》{x.page_content}"}
+        | HYPO_QUESTION_PROMPT
+        | model.bind(functions=functions, function_call={"name": "hypothetical_questions"})
+        | JsonKeyOutputFunctionsParser(key_name="questions")
     )
 
     return chain

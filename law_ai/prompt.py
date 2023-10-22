@@ -19,3 +19,9 @@ check_law_prompt_template = """你是一个专业律师，请判断下面问题�
 CHECK_LAW_PROMPT = PromptTemplate(
     template=check_law_prompt_template, input_variables=["question"]
 )
+
+hypo_questions_prompt_template = """生成 5 个假设问题的列表，以下文档可用于回答这些问题:\n\n{context}"""
+
+HYPO_QUESTION_PROMPT = PromptTemplate(
+    template=hypo_questions_prompt_template, input_variables=["context"]
+)

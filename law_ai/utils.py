@@ -37,11 +37,14 @@ def get_vectorstore(collection_name: str = "law") -> Chroma:
 
 
 def clear_vectorstore() -> None:
-    index([], get_record_manager(), get_vectorstore("law"), cleanup="full", source_id_key="source")
+    record_manager = get_record_manager()
+    vectorstore = get_vectorstore("law")
+
+    index([], record_manager, vectorstore, cleanup="full", source_id_key="source")
 
 
-def get_model() -> ChatOpenAI:
-    model = ChatOpenAI(streaming=True)
+def get_model(model="gpt-3.5-turbo-0613", streaming=True) -> ChatOpenAI:
+    model = ChatOpenAI(model=model, streaming=streaming)
     return model
 
 
