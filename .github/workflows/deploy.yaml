@@ -1,5 +1,8 @@
 name: Law AI deplay
-on: [push]
+on:
+  push:
+    branches:
+      - test
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -16,6 +19,4 @@ jobs:
           REMOTE_PORT: ${{ secrets.REMOTE_PORT }}
           TARGET: ${{secrets.REMOTE_TARGET }}
           SCRIPT_AFTER: |
-            whoami
-            ls -al
-            echo $RSYNC_STDOUT
+            supervisorctl restart law
