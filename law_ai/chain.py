@@ -19,6 +19,7 @@ from langchain.output_parsers import BooleanOutputParser
 from langchain.schema.runnable import RunnableMap
 from langchain.chains.base import Chain
 from langchain.utilities import DuckDuckGoSearchAPIWrapper
+from langchain.callbacks import AsyncIteratorCallbackHandler
 from langchain.output_parsers.openai_functions import JsonKeyOutputFunctionsParser
 from langchain.callbacks.manager import (
     AsyncCallbackManagerForChainRun,
@@ -26,7 +27,7 @@ from langchain.callbacks.manager import (
 )
 
 from .utils import get_vectorstore, get_model
-from .retriever import LawWebRetiever
+from .retriever import LawWebRetiever, get_multi_query_law_retiever
 from .prompt import LAW_PROMPT, CHECK_LAW_PROMPT, HYPO_QUESTION_PROMPT
 from .combine import combine_law_docs, combine_web_docs
 
@@ -159,11 +160,10 @@ def get_check_law_chain(config: Any) -> Chain:
     return check_chain
 
 
-def get_law_chain(config: Any) -> Chain:
+def get_law_chain(config: Any, out_callback: AsyncIteratorCallbackHandler) -> Chain:
     law_vs = get_vectorstore(config.LAW_VS_COLLECTION_NAME)
     web_vs = get_vectorstore(config.WEB_VS_COLLECTION_NAME)
 
-    model = get_model()
     vs_retriever = law_vs.as_retriever(search_kwargs={"k": config.LAW_VS_SEARCH_K})
     web_retriever = LawWebRetiever(
         vectorstore=web_vs,
@@ -171,10 +171,12 @@ def get_law_chain(config: Any) -> Chain:
         num_search_results=config.WEB_VS_SEARCH_K
     )
 
+    multi_query_retriver = get_multi_query_law_retiever(vs_retriever, get_model())
+
     chain = (
         RunnableMap(
             {
-                "law_docs": itemgetter("question") | vs_retriever,
+                "law_docs": itemgetter("question") | multi_query_retriver,
                 'web_docs': itemgetter("question") | web_retriever,
                 "question": lambda x: x["question"]}
         )
@@ -199,7 +201,7 @@ def get_law_chain(config: Any) -> Chain:
             "web_docs": lambda x: x["web_docs"],
             "law_context": lambda x: x["law_context"],
             "web_context": lambda x: x["web_context"],
-            "answer": itemgetter("prompt") | model | StrOutputParser()
+            "answer": itemgetter("prompt") | get_model(callbacks=[out_callback]) | StrOutputParser()
         })
     )
 

@@ -9,6 +9,7 @@ from langchain.indexes import SQLRecordManager, index
 from langchain.vectorstores import Chroma
 from langchain.indexes._api import _batch
 from langchain.chat_models import ChatOpenAI
+from langchain.callbacks.manager import Callbacks
 
 
 def get_cached_embedder() -> CacheBackedEmbeddings:
@@ -43,8 +44,11 @@ def clear_vectorstore(collection_name: str = "law") -> None:
     index([], record_manager, vectorstore, cleanup="full", source_id_key="source")
 
 
-def get_model(model="gpt-3.5-turbo-0613", streaming=True) -> ChatOpenAI:
-    model = ChatOpenAI(model=model, streaming=streaming)
+def get_model(
+        model: str = "gpt-3.5-turbo-0613",
+        streaming: bool = True,
+        callbacks: Callbacks = None) -> ChatOpenAI:
+    model = ChatOpenAI(model=model, streaming=streaming, callbacks=callbacks)
     return model
 
 
