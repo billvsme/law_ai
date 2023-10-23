@@ -4,15 +4,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: List files in the repository
-      run: |
-        ls ${{ github.workspace }}
-    - name: List files in the repository 2
-      run: |
-        ls './'
-    - name: Deploy to Server
-      uses: easingthemes/ssh-deploy@main
-      with:
+      - name: List files in the repository
+        run: |
+          ls ${{ github.workspace }}
+      - name: List files in the repository 2
+        run: |
+          ls './'
+      - name: Deploy to Server
+        uses: easingthemes/ssh-deploy@main
+        with:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SOURCE: ''
           REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
