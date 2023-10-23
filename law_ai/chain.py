@@ -173,6 +173,8 @@ def get_law_chain(config: Any, out_callback: AsyncIteratorCallbackHandler) -> Ch
 
     multi_query_retriver = get_multi_query_law_retiever(vs_retriever, get_model())
 
+    callbacks = [out_callback] if out_callback else []
+
     chain = (
         RunnableMap(
             {
@@ -201,7 +203,7 @@ def get_law_chain(config: Any, out_callback: AsyncIteratorCallbackHandler) -> Ch
             "web_docs": lambda x: x["web_docs"],
             "law_context": lambda x: x["law_context"],
             "web_context": lambda x: x["web_context"],
-            "answer": itemgetter("prompt") | get_model(callbacks=[out_callback]) | StrOutputParser()
+            "answer": itemgetter("prompt") | get_model(callbacks=callbacks) | StrOutputParser()
         })
     )
 

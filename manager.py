@@ -73,8 +73,8 @@ def run_web() -> None:
     chain = get_law_chain(config, out_callback=None)
 
     async def chat(message, history):
-
         out_callback = OutCallbackHandler()
+
         is_law = check_law_chain.invoke({"question": message})
         if not is_law:
             yield "不好意思，我是法律AI助手，请提问和法律有关的问题。"
@@ -97,8 +97,6 @@ def run_web() -> None:
         for new_token in ["\n\n", res["law_context"], "\n", res["web_context"]]:
             response += new_token
             yield response
-
-        out_callback.done.clear()
 
     demo = gr.ChatInterface(
         fn=chat, examples=["故意杀了一个人，会判几年？", "杀人自首会减刑吗？"], title="法律AI小助手")
