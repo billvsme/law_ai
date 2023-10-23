@@ -69,18 +69,24 @@ async def run_shell() -> None:
 def run_web() -> None:
     import gradio as gr
 
-    async def chat(message, history):
-        check_law_chain = get_check_law_chain(config)
-        out_callback = OutCallbackHandler()
-        chain = get_law_chain(config, out_callback=out_callback)
+    check_law_chain = get_check_law_chain(config)
+    chain = get_law_chain(config, out_callback=None)
 
+    async def chat(message, history):
+
+        out_callback = OutCallbackHandler()
         is_law = check_law_chain.invoke({"question": message})
         if not is_law:
             yield "不好意思，我是法律AI助手，请提问和法律有关的问题。"
             return
 
         task = asyncio.create_task(
-            chain.ainvoke({"question": message}))
+            chain.ainvoke({"question": message}, config={"callbacks": [out_callback]}))
+
+        async for new_token in out_callback.aiter():
+            pass
+
+        out_callback.done.clear()
 
         response = ""
         async for new_token in out_callback.aiter():
@@ -92,12 +98,14 @@ def run_web() -> None:
             response += new_token
             yield response
 
+        out_callback.done.clear()
+
     demo = gr.ChatInterface(
         fn=chat, examples=["故意杀了一个人，会判几年？", "杀人自首会减刑吗？"], title="法律AI小助手")
 
+    demo.queue()
     demo.launch(
         server_name=config.WEB_HOST, server_port=config.WEB_PORT,
-        enable_queue=True,
         auth=(config.WEB_USERNAME, config.WEB_PASSWORD),
         auth_message="默认用户名密码: username / password")
 
