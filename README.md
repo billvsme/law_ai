@@ -38,18 +38,28 @@ flowchart LR
 flowchart LR
     A[提问] --> B[问题校验];
     B -- 否 --> C1[请提问法律相关问题]
-    B -- 是 --> C[法律Chain];
-    subgraph Law Chain
-    C --> D[向量数据库Chroma];
-    C --> E[DuckDuckGo互联网搜索];
-    D --> F[法律docs]
-    E --> G[网页docs]
-    G1[Prompt] --> H[合并combine]
-    F --> H
-    G --> H
-    H --> I[LLM]
+    B -- 是 --> C2[法律Chain];
+    subgraph Law Chain 
+    C2 --> D[LLM]
+    subgraph MultiQuery Retriever
+    D --> E1[相似问题 01]
+    D --> E2[相似问题 02]
+    D --> E3[相似问题 03]
+    E1 --> F[向量数据库Chroma]
+    E2 --> F
+    E3 --> F
+    F --> H[法律docs]
     end
-    I --> J[callback流输出]
+    C2 --> G[DuckDuckGo互联网搜索]
+    subgraph Web Retriever
+    G --> I[网页docs]
+    end
+    H --> K[合并combine]
+    I --> K
+    J[提问Prompt] --> K
+    K --> L[LLM]
+    L --> M[callback流输出]
+    end
 ```
 
 
