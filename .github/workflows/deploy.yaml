@@ -1,12 +1,15 @@
-name: Law AI deplay
-on: [push]
+name: Law AI prod
+on:
+  push:
+    branches:
+      - master
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
-      - name: Deploy to Server
+      - name: Rsync to Server and Restart
         uses: easingthemes/ssh-deploy@main
         with:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -16,6 +19,4 @@ jobs:
           REMOTE_PORT: ${{ secrets.REMOTE_PORT }}
           TARGET: ${{secrets.REMOTE_TARGET }}
           SCRIPT_AFTER: |
-            whoami
-            ls -al
-            echo $RSYNC_STDOUT
+            supervisorctl restart law
