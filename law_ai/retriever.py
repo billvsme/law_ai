@@ -10,6 +10,7 @@ from langchain.output_parsers import PydanticOutputParser
 from langchain.text_splitter import RecursiveCharacterTextSplitter, TextSplitter
 from langchain.chains import LLMChain
 from langchain.retrievers.multi_query import MultiQueryRetriever
+from duckduckgo_search.exceptions import DuckDuckGoSearchException
 
 from .prompt import MULTI_QUERY_PROMPT_TEMPLATE
 from .utils import get_model
@@ -36,7 +37,10 @@ class LawWebRetiever(BaseRetriever):
         run_manager: CallbackManagerForRetrieverRun,
     ) -> List[Document]:
 
-        results = self.search.results(query, self.num_search_results)
+        try:
+            results = self.search.results(query, self.num_search_results)
+        except DuckDuckGoSearchException:
+            results = []
 
         docs = []
         for res in results:
